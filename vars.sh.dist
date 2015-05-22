@@ -1,0 +1,4 @@
+#!/bin/bash
+PKG_MAINTAINER="Your Name <you@example.com>"
+PKG_VENDOR="Your Name <you@example.com>"
+ITERATION_PREFIX="yourname"
