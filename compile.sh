@@ -8,7 +8,12 @@ mkdir builds
 mkdir packages
 
 CURPATH=$PWD
-FILES=$(find "$PWD" -iname \*.tar.gz -printf "%f\n")
+FILES=$(find "$PWD" -iname \*.tar.gz -printf "%f\n" | grep -v "^openvas-libraries")
+
+# Libraries need to be build prior to any other packages
+FILES="$(find "$PWD" -iname openvas-libraries*.tar.gz -printf "%f\n") $FILES"
+
+LIBRARY_VERSION=""
 
 ###############
 ## Create DEB
@@ -20,17 +25,22 @@ for f in $FILES
 do
  echo "Processing $f"
  FN=$(echo $f | sed 's/.tar.gz//g')
- #VERSION=$(echo $FN | awk -F"-" '{ print $3 }')
  VERSION=$(echo $FN | sed -nre 's/^[^0-9]*(([0-9]+\.)*[0-9]+).*/\1/p')
  PKG=$(echo $FN | sed "s/\-$VERSION//g")
- #exit
 
  mkdir "builds/$FN"
 
  tar xfvz "$f"
  cd "$FN"
-  cmake -DCMAKE_INSTALL_PREFIX:PATH= .
- make install DESTDIR="$PWD/builds/$FN"
+
+ if [[ "$PKG" == "openvas-libraries" ]];
+ then
+  # Special case package due to ordering
+  export PKG_CONFIG_PATH="$CURPATH/$FN":$PKG_CONFIG_PATH
+ fi
+
+ cmake -DCMAKE_INSTALL_PREFIX= .
+ make install DESTDIR="$CURPATH/builds/$FN"
 
 function create_overlay {
  # $1 = greenbone-security-assistant
@@ -44,7 +54,7 @@ function create_overlay {
 DEPENDENCIES=""
 case "$PKG" in
 "openvas-scanner")
-    DEPENDENCIES="libgpgme11 libksba8 libsnmp30 libssh-4 libhiredis0.10 openvas-libraries libgnutls26 libgcrypt11 libsqlite3-0"
+    DEPENDENCIES="libgpgme11 libksba8 libsnmp30 libssh-4 libhiredis0.10 openvas-libraries libgnutls26 libgcrypt20 libsqlite3-0"
     ;;
 "openvas-manager")
     DEPENDENCIES="libgnutls26 openvas-libraries libsqlite3-0"
