@@ -1,36 +1,42 @@
 #!/bin/sh -e
 #
-# /etc/init.d/openvas-manager
+# /etc/init.d/openvas-scanner
+#
+# Originally written by Miquel van Smoorenburg <miquels@drinkel.ow.org>.
+# Modified for Debian GNU/Linux by Ian Murdock <imurdock@gnu.ai.mit.edu>.
+# Modified for nessusd by Luca Andreucci <andrew@andrew.org>
+# Further changes by Javier Fernandez-Sanguino <jfs@debian.org> for the
+# Debian GNU/Linux distribution
+# Even more changes for Debian GNU/Linux openvas-scanner package by
+# Tim Brown <timb@nth-dimension.org.uk>
 #
 ### BEGIN INIT INFO
-# Provides:          openvas-manager
+# Provides:          openvas-scanner
 # Required-Start:    $remote_fs
 # Required-Stop:     $remote_fs
 # Should-Start:
 # Should-Stop:
 # Default-Start:
 # Default-Stop:      0 6
-# Short-Description: Start and stop the OpenVAS Manager
-# Description:       Controls the OpenVAS daemon "openvasmd".
+# Short-Description: Start and stop the OpenVAS daemon
+# Description:       Controls the main OpenVAS daemon "openvassd".
 ### END INIT INFO
 
 # time to wait for daemons death, in seconds
-# don't set it too low or you might not let openvasmd die gracefully
-DODTIME=10
+# don't set it too low or you might not let openvassd die gracefully
+DODTIME=5
 
-# Read config
-[ -r /etc/default/openvas-manager ] && . /etc/default/openvas-manager
+[ -r /etc/default/openvas-scanner ] && . /etc/default/openvas-scanner
 
-#[ "$DATABASE_FILE" ]   && DAEMONOPTS="--database="$DATABASE_FILE
-[ "$MANAGER_ADDRESS" ] && DAEMONOPTS="$DAEMONOPTS --listen=$MANAGER_ADDRESS"
-[ "$MANAGER_PORT" ]    && DAEMONOPTS="$DAEMONOPTS --port=$MANAGER_PORT"
-[ "$SCANNER_ADDRESS" ] && DAEMONOPTS="$DAEMONOPTS --scanner-host=$SCANNER_ADDRESS"
-[ "$SCANNER_PORT" ]    && DAEMONOPTS="$DAEMONOPTS --scanner-port=$SCANNER_PORT"
+# daemon options
+DAEMONOPTS=""
+[ "$SCANNER_ADDRESS" ] && DAEMONOPTS="$DAEMONOPTS --listen=$SCANNER_ADDRESS"
+[ "$SCANNER_PORT" ]    && DAEMONOPTS="$DAEMONOPTS --port=$SCANNER_PORT"
 
-DAEMON=/usr/local/sbin/openvasmd
-PIDFILE=/usr/local/var/run/openvasmd.pid
-NAME=openvasmd
-LABEL="OpenVAS Manager"
+DAEMON=/usr/local/sbin/openvassd
+PIDFILE=/usr/local/var/run/openvassd.pid
+NAME=openvassd
+LABEL="OpenVAS Scanner"
 
 test -x $DAEMON || exit 0
 
@@ -47,13 +53,30 @@ running()
 
     [ ! -d /proc/$pid ] &&  return 1
     cmd=`cat /proc/$pid/cmdline | tr "\000" "\n"|head -n 1 |cut -d : -f 1`
-    # No openvasmd?
-    [ `basename "$cmd"` != "$NAME" ] &&  return 1
+    # No openvassd?
+    [ "$cmd" != "$NAME" ] &&  return 1
 
     return 0
 }
 
-start_daemon() {
+warn_cert_file() {
+	echo -n "WARN: The (expected) certificate file $1 is not available." >&2
+	echo -n "The OpenVAS daemon might not start up." >&2
+}
+
+check_certs() {
+	CERTDIR=/usr/local/var/lib/openvas/CA/
+	PRIVCERTDIR=/usr/local/var/lib/openvas/private/CA/
+	for cert in cacert.pem servercert.pem; do
+		[ ! -r "$CERTDIR/$cert" ] && warn_cert_file "$CERTDIR/$cert"
+	done
+	for cert in cakey.pem serverkey.pem; do
+		[ ! -r "$PRIVCERTDIR/$cert" ] && warn_cert_file "$CERTDIR/$cert"
+	done
+}
+
+openvas_start() {
+	check_certs
         start-stop-daemon --start --exec $DAEMON -- $DAEMONOPTS 2>&1 >/dev/null
 	errcode=$?
 # If we don't sleep then running() might not see the pidfile
@@ -82,8 +105,8 @@ force_stop() {
 case "$1" in
   start)
     echo -n "Starting $LABEL: "
-    if start_daemon && running ;  then
-	    echo "openvasmd."
+    if openvas_start && running ;  then
+	    echo "openvassd."
     else
     	    echo "ERROR."
 	    exit 1
@@ -98,7 +121,7 @@ case "$1" in
     if running; then
         force_stop
     fi
-    echo "openvasmd."
+    echo "openvassd."
       ;;
   restart)
     echo -n "Restarting $LABEL: "
@@ -109,8 +132,8 @@ case "$1" in
     if running; then
         force_stop
     fi
-    if start_daemon && running ;  then
-	    echo "openvasmd."
+    if openvas_start && running ;  then
+	    echo "openvassd."
     else
     	    echo "ERROR."
 	    exit 1
@@ -136,12 +159,8 @@ case "$1" in
 	    exit 1
     fi
     ;;
-  rebuild)
-    echo "Rebuilding the NVT cache"
-    $DAEMON $DAEMONOPTS --rebuild
-    ;;
   *)
-    echo "Usage: /etc/init.d/openvas-manager {start|stop|restart|reload|status|update|rebuild}"
+    echo "Usage: /etc/init.d/openvas-scanner {start|stop|restart|reload|status}"
     exit 1
     ;;
 esac

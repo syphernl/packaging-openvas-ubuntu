@@ -1,16 +1,4 @@
 #
-# The address the OpenVAS Manager will listen on.
-#
-
-MANAGER_ADDRESS=127.0.0.1
-
-#
-# The port the OpenVAS Manager will listen on.
-#
-
-MANAGER_PORT=9390
-
-#
 # The address the OpenVAS Scanner is listening on.
 #
 

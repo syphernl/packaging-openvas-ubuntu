@@ -1,6 +1,9 @@
 #!/bin/bash
 source vars.sh
 
+# Stop on errors
+set -e
+
 # Colors
 ESC_SEQ="\x1b["
 COL_RESET=$ESC_SEQ"39;49;00m"
@@ -11,10 +14,10 @@ COL_BLUE=$ESC_SEQ"34;01m"
 COL_MAGENTA=$ESC_SEQ"35;01m"
 COL_CYAN=$ESC_SEQ"36;01m"
 
-rm builds -r
+rm release -r
 rm packages -r
 
-mkdir builds
+mkdir release
 mkdir packages
 
 CURPATH=$PWD
@@ -26,9 +29,28 @@ FILES="$(find "$PWD" -iname openvas-libraries*.tar.gz -printf "%f\n") $FILES"
 LIBRARY_VERSION=""
 
 function create_overlay {
- # $1 = greenbone-security-assistant
- echo -e "$COL_GREEN*** Overlaying config for packages ($FN) $COL_RESET"
- cp "$CURPATH/_overlay/$1/"* "$CURPATH/builds/$FN/" -r
+  # $1 = greenbone-security-assistant
+ if [[ -d "$CURPATH/_overlay/$1"]];
+ then
+   echo -e "$COL_GREEN*** Overlaying config for packages ($FN) $COL_RESET"
+   cp "$CURPATH/_overlay/$1/"* "$CURPATH/release/$FN/" -r
+ fi
+}
+
+function build_pkg {
+  # $1 = greenbone-security-assistant-6.0.3
+  cd "$CURPATH/$1"
+
+  if [ -d "build" ];
+  then
+    echo "$COL_CYAN*** Cleaning up old build"
+    rm "build" -r
+  fi
+
+  mkdir build
+  cd build
+  cmake -DCMAKE_BUILD_TYPE:STRING=Release ..
+  make install DESTDIR="$CURPATH/release/$FN"
 }
 
 ###############
@@ -46,23 +68,22 @@ do
 
  echo -e "$COL_GREEN*** Building package $PKG (version: $VERSION) $COL_RESET"
 
- mkdir "builds/$FN"
+ mkdir "$CURPATH/release/$FN"
 
  tar xfvz "$f"
  cd "$FN"
 
- cmake -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX= .
- make install DESTDIR="$CURPATH/builds/$FN"
+ build_pkg "$FN"
 
- # Library requires an export for further processing of other packages
- if [[ "$PKG" == "openvas-libraries" ]];
- then
-  # Special case package due to ordering
-  export PKG_CONFIG_PATH="$CURPATH/builds/$FN/lib64/pkgconfig"
-  echo -e "$COL_GREEN*** Set library: $PKG_CONFIG_PATH $COL_RESET"
- else
-  echo -e "$COL_YELLOW*** Using library: $PKG_CONFIG_PATH"
- fi
+# # Library requires an export for further processing of other packages
+# if [[ "$PKG" == "openvas-libraries" ]];
+# then
+#  # Special case package due to ordering
+#  export PKG_CONFIG_PATH="$CURPATH/release/$FN/lib64/pkgconfig"
+#  echo -e "$COL_GREEN*** Set library: $PKG_CONFIG_PATH $COL_RESET"
+# else
+#  echo -e "$COL_YELLOW*** Using library: $PKG_CONFIG_PATH"
+# fi
 
 
 ###############
@@ -76,8 +97,6 @@ case "$PKG" in
     ;;
 "openvas-manager")
     DEPENDENCIES="libgnutls26 openvas-libraries libsqlite3-0"
-    # Overlay init script
-    create_overlay "openvas-manager"
     ;;
 "openvas-libraries")
     DEPENDENCIES=""
@@ -87,10 +106,11 @@ case "$PKG" in
     ;;
 "greenbone-security-assistant")
     DEPENDENCIES="openvas-libraries libgnutls26 libgcrypt11 libxml2 libxslt1.1 libmicrohttpd10 xsltproc"
-    # Overlay init script
-    create_overlay "greenbone-security-assistant"
     ;;
 esac
+
+# Overlay files required to be packaged
+create_overlay "$PKG"
 
 # Deal with dependencies
 PKG_DEP=""
@@ -98,6 +118,8 @@ for d in $DEPENDENCIES
 do
    PKG_DEP+="-d $d\n"
 done
+
+cd "$CURPATH/release/$FN"
 
  # FPM it
 fpm -s dir -t deb \
@@ -108,14 +130,14 @@ fpm -s dir -t deb \
 --vendor "$PKG_VENDOR" \
 --version "$VERSION" \
 --iteration "$ITERATION_PREFIX$REVISION" \
--C "$CURPATH/builds/$FN" \
+-C "$CURPATH/release/$FN" \
 -a amd64 \
 $(echo -e $PKG_DEP) \
 -n $PKG .
 
 echo -e "$COL_GREEN *** PKG built: $PKG (v $VERSION)!$COL_RESET"
 
-cd -
+cd $CURPATH
 
 done
 

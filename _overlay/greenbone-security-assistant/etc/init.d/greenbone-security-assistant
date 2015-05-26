@@ -1,36 +1,42 @@
 #!/bin/sh -e
 #
-# /etc/init.d/openvas-manager
+# /etc/init.d/greenbone-security-assistant
 #
 ### BEGIN INIT INFO
-# Provides:          openvas-manager
+# Provides:          greenbone-security-assistant
 # Required-Start:    $remote_fs
 # Required-Stop:     $remote_fs
 # Should-Start:
 # Should-Stop:
 # Default-Start:
 # Default-Stop:      0 6
-# Short-Description: Start and stop the OpenVAS Manager
-# Description:       Controls the OpenVAS daemon "openvasmd".
+# Short-Description: Start and stop the Greenbone Security Assistant
+# Description:       Controls the OpenVAS daemon "gsad".
 ### END INIT INFO
 
 # time to wait for daemons death, in seconds
-# don't set it too low or you might not let openvasmd die gracefully
-DODTIME=10
+# don't set it too low or you might not let gsad die gracefully
+DODTIME=5
 
 # Read config
-[ -r /etc/default/openvas-manager ] && . /etc/default/openvas-manager
+[ -r /etc/default/greenbone-security-assistant ] && . /etc/default/greenbone-security-assistant
 
-#[ "$DATABASE_FILE" ]   && DAEMONOPTS="--database="$DATABASE_FILE
-[ "$MANAGER_ADDRESS" ] && DAEMONOPTS="$DAEMONOPTS --listen=$MANAGER_ADDRESS"
-[ "$MANAGER_PORT" ]    && DAEMONOPTS="$DAEMONOPTS --port=$MANAGER_PORT"
-[ "$SCANNER_ADDRESS" ] && DAEMONOPTS="$DAEMONOPTS --scanner-host=$SCANNER_ADDRESS"
-[ "$SCANNER_PORT" ]    && DAEMONOPTS="$DAEMONOPTS --scanner-port=$SCANNER_PORT"
+[ "$GSA_ADDRESS" ] && DAEMONOPTS="--listen=$GSA_ADDRESS"
+[ "$GSA_PORT" ] && DAEMONOPTS="$DAEMONOPTS --port=$GSA_PORT"
+[ "$GSA_SSL_PRIVATE_KEY" ] && DAEMONOPTS="$DAEMONOPTS --ssl-private-key=$GSA_SSL_PRIVATE_KEY"
+[ "$GSA_SSL_CERTIFICATE" ] && DAEMONOPTS="$DAEMONOPTS --ssl-certificate=$GSA_SSL_CERTIFICATE"
+[ "$GSA_REDIRECT" ] && [ "$GSA_REDIRECT" == 1 ] && DAEMONOPTS="$DAEMONOPTS --redirect"
+[ "$GSA_REDIRECT_PORT" ] && DAEMONOPTS="$DAEMONOPTS --rport=$GSA_REDIRECT_PORT"
+[ "$MANAGER_ADDRESS" ] && DAEMONOPTS="$DAEMONOPTS --mlisten=$MANAGER_ADDRESS"
+[ "$MANAGER_PORT" ] && DAEMONOPTS="$DAEMONOPTS --mport=$MANAGER_PORT"
+if [ "$HTTP_ONLY" = "yes" ]; then
+        DAEMONOPTS="$DAEMONOPTS --http-only"
+fi
 
-DAEMON=/usr/local/sbin/openvasmd
-PIDFILE=/usr/local/var/run/openvasmd.pid
-NAME=openvasmd
-LABEL="OpenVAS Manager"
+
+DAEMON=/usr/local/sbin/gsad
+PIDFILE=/usr/local/var/run/gsad.pid
+LABEL="Greenbone Security Assistant"
 
 test -x $DAEMON || exit 0
 
@@ -47,8 +53,8 @@ running()
 
     [ ! -d /proc/$pid ] &&  return 1
     cmd=`cat /proc/$pid/cmdline | tr "\000" "\n"|head -n 1 |cut -d : -f 1`
-    # No openvasmd?
-    [ `basename "$cmd"` != "$NAME" ] &&  return 1
+    # No gsad?
+    [ "$cmd" != "$DAEMON" ] &&  return 1
 
     return 0
 }
@@ -83,7 +89,7 @@ case "$1" in
   start)
     echo -n "Starting $LABEL: "
     if start_daemon && running ;  then
-	    echo "openvasmd."
+	    echo "gsad."
     else
     	    echo "ERROR."
 	    exit 1
@@ -98,7 +104,7 @@ case "$1" in
     if running; then
         force_stop
     fi
-    echo "openvasmd."
+    echo "gsad."
       ;;
   restart)
     echo -n "Restarting $LABEL: "
@@ -110,7 +116,7 @@ case "$1" in
         force_stop
     fi
     if start_daemon && running ;  then
-	    echo "openvasmd."
+	    echo "gsad."
     else
     	    echo "ERROR."
 	    exit 1
@@ -136,12 +142,8 @@ case "$1" in
 	    exit 1
     fi
     ;;
-  rebuild)
-    echo "Rebuilding the NVT cache"
-    $DAEMON $DAEMONOPTS --rebuild
-    ;;
   *)
-    echo "Usage: /etc/init.d/openvas-manager {start|stop|restart|reload|status|update|rebuild}"
+    echo "Usage: /etc/init.d/greenbone-security-assistant {start|stop|restart|reload|status}"
     exit 1
     ;;
 esac
