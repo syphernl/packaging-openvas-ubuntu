@@ -58,7 +58,7 @@ do
  if [[ "$PKG" == "openvas-libraries" ]];
  then
   # Special case package due to ordering
-  export PKG_CONFIG_PATH="$CURPATH/builds/$FN/include:$CURPATH/builds/$FN/lib64/pkgconfig:$PKG_CONFIG_PATH"
+  export PKG_CONFIG_PATH="$CURPATH/builds/$FN/lib64/pkgconfig"
   echo -e "$COL_GREEN*** Set library: $PKG_CONFIG_PATH $COL_RESET"
  else
   echo -e "$COL_YELLOW*** Using library: $PKG_CONFIG_PATH"
