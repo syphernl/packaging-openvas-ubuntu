@@ -25,6 +25,12 @@ FILES="$(find "$PWD" -iname openvas-libraries*.tar.gz -printf "%f\n") $FILES"
 
 LIBRARY_VERSION=""
 
+function create_overlay {
+ # $1 = greenbone-security-assistant
+ echo -e "$COL_GREEN*** Overlaying config for packages ($FN) $COL_RESET"
+ cp "$CURPATH/_overlay/$1/"* "$CURPATH/builds/$FN/" -r
+}
+
 ###############
 ## Create DEB
 ##############
@@ -38,27 +44,26 @@ do
  VERSION=$(echo $FN | sed -nre 's/^[^0-9]*(([0-9]+\.)*[0-9]+).*/\1/p')
  PKG=$(echo $FN | sed "s/\-$VERSION//g")
 
- echo -e "$COL_GREEN *** Building package $PKG (version: $VERSION) $COL_RESET"
+ echo -e "$COL_GREEN*** Building package $PKG (version: $VERSION) $COL_RESET"
 
  mkdir "builds/$FN"
 
  tar xfvz "$f"
  cd "$FN"
 
- if [[ "$PKG" == "openvas-libraries" ]];
- then
-  # Special case package due to ordering
-  export PKG_CONFIG_PATH="$CURPATH/builds/$FN/include":$PKG_CONFIG_PATH
-  echo -e "$COL_GREEN *** Using library: $PKG_CONFIG_PATH $COL_RESET"
- fi
-
  cmake -DCMAKE_INSTALL_PREFIX= .
  make install DESTDIR="$CURPATH/builds/$FN"
 
-function create_overlay {
- # $1 = greenbone-security-assistant
- cp "$CURPATH/_overlay/$1/"* "$CURPATH/builds/$FN/" -r
-}
+ # Library requires an export for further processing of other packages
+ if [[ "$PKG" == "openvas-libraries" ]];
+ then
+  # Special case package due to ordering
+  export PKG_CONFIG_PATH="$CURPATH/builds/$FN/include:$PKG_CONFIG_PATH"
+  echo -e "$COL_GREEN*** Set library: $PKG_CONFIG_PATH $COL_RESET"
+ else
+  echo -e "$COL_YELLOW*** Using library: $PKG_CONFIG_PATH"
+ fi
+
 
 ###############
 ## Create DEB
@@ -85,7 +90,6 @@ case "$PKG" in
     # Overlay init script
     create_overlay "greenbone-security-assistant"
     ;;
-
 esac
 
 # Deal with dependencies
@@ -109,9 +113,9 @@ fpm -s dir -t deb \
 $(echo -e $PKG_DEP) \
 -n $PKG .
 
- cd -
+cd -
 
-echo -e "$COL_GREEN *** PKG built: $PKG (v $VERSION)!"
+echo -e "$COL_GREEN *** PKG built: $PKG (v $VERSION)!$COL_RESET"
 
 done
 
