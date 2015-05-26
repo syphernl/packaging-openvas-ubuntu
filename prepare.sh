@@ -25,7 +25,7 @@ fi
 
 sudo apt-get install -y build-essential devscripts dpatch libassuan-dev \
  libglib2.0-dev libgpgme11-dev libpcre3-dev libpth-dev libwrap0-dev libgmp-dev libgmp3-dev \
- libgpgme11-dev libopenvas2 libpcre3-dev libpth-dev quilt cmake pkg-config \
+ libgpgme11-dev libpcre3-dev libpth-dev quilt cmake pkg-config \
  libssh-dev libglib2.0-dev libpcap-dev libgpgme11-dev uuid-dev bison libksba-dev \
  doxygen sqlfairy xmltoman sqlite3 libsqlite3-dev wamerican redis-server libhiredis-dev libsnmp-dev \
  libmicrohttpd-dev libxml2-dev libxslt1-dev xsltproc libssh2-1-dev libldap2-dev autoconf nmap libgnutls-dev \
