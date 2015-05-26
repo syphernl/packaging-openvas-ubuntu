@@ -51,7 +51,7 @@ do
  tar xfvz "$f"
  cd "$FN"
 
- cmake -DCMAKE_INSTALL_PREFIX= .
+ cmake -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX= .
  make install DESTDIR="$CURPATH/builds/$FN"
 
  # Library requires an export for further processing of other packages
@@ -113,9 +113,9 @@ fpm -s dir -t deb \
 $(echo -e $PKG_DEP) \
 -n $PKG .
 
-cd -
-
 echo -e "$COL_GREEN *** PKG built: $PKG (v $VERSION)!$COL_RESET"
+
+cd -
 
 done
 
