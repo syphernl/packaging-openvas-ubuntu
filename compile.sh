@@ -37,7 +37,7 @@ function create_overlay {
  fi
 }
 
-function build_pkg {
+function compile_component {
   # $1 = greenbone-security-assistant-6.0.3
   cd "$CURPATH/$1"
 
@@ -73,17 +73,15 @@ do
  tar xfvz "$f"
  cd "$FN"
 
- build_pkg "$FN"
+ compile_component "$FN"
 
-# # Library requires an export for further processing of other packages
-# if [[ "$PKG" == "openvas-libraries" ]];
-# then
-#  # Special case package due to ordering
-#  export PKG_CONFIG_PATH="$CURPATH/release/$FN/lib64/pkgconfig"
-#  echo -e "$COL_GREEN*** Set library: $PKG_CONFIG_PATH $COL_RESET"
-# else
-#  echo -e "$COL_YELLOW*** Using library: $PKG_CONFIG_PATH"
-# fi
+  # Library requires an export for further processing of other packages
+  if [[ "$PKG" == "openvas-libraries" ]];
+  then
+    # This package requires an install before we can build other components.
+    # Pretty annoying ..
+    make install
+  fi
 
 
 ###############
@@ -119,16 +117,16 @@ do
   PKG_ACTIONS+="-d $d\n"
 done
 
-# Deal with optional pre/post install scripts
-if [[ -f "$CURPATH/_debian/$PKG.beforeinstall" ]];
-then
-  PKG_ACTIONS+="--before-install $CURPATH/_debian/$PKG.beforeinstall\n"
-fi
-
-if [[ -f "$CURPATH/_debian/$PKG.afterinstall" ]];
-then
-  PKG_ACTIONS+="--after-install $CURPATH/_debian/$PKG.afterinstall\n"
-fi
+# Deal with post/after actions
+ACTIONS="before-install before-remove before-upgrade after-install after-remove after-upgrade"
+for a in $ACTIONS;
+do
+  # Deal with optional pre/post install scripts
+  if [[ -f "$CURPATH/_debian/$PKG.$a" ]];
+  then
+    PKG_ACTIONS+="--$a $CURPATH/_debian/$PKG.$a\n"
+  fi
+done
 
 cd "$CURPATH/release/$FN"
 
