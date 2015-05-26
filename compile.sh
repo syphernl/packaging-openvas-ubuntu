@@ -1,6 +1,16 @@
 #!/bin/bash
 source vars.sh
 
+# Colors
+ESC_SEQ="\x1b["
+COL_RESET=$ESC_SEQ"39;49;00m"
+COL_RED=$ESC_SEQ"31;01m"
+COL_GREEN=$ESC_SEQ"32;01m"
+COL_YELLOW=$ESC_SEQ"33;01m"
+COL_BLUE=$ESC_SEQ"34;01m"
+COL_MAGENTA=$ESC_SEQ"35;01m"
+COL_CYAN=$ESC_SEQ"36;01m"
+
 rm builds -r
 rm packages -r
 
@@ -28,6 +38,8 @@ do
  VERSION=$(echo $FN | sed -nre 's/^[^0-9]*(([0-9]+\.)*[0-9]+).*/\1/p')
  PKG=$(echo $FN | sed "s/\-$VERSION//g")
 
+ echo -e "$COL_GREEN *** Building package $PKG (version: $VERSION) $COL_RESET"
+
  mkdir "builds/$FN"
 
  tar xfvz "$f"
@@ -37,6 +49,7 @@ do
  then
   # Special case package due to ordering
   export PKG_CONFIG_PATH="$CURPATH/builds/$FN/include":$PKG_CONFIG_PATH
+  echo -e "$COL_GREEN *** Using library: $PKG_CONFIG_PATH $COL_RESET"
  fi
 
  cmake -DCMAKE_INSTALL_PREFIX= .
@@ -44,7 +57,7 @@ do
 
 function create_overlay {
  # $1 = greenbone-security-assistant
- cp "$CURPATH/_overlay/$1/"* "$PWD/builds/$FN/" -r
+ cp "$CURPATH/_overlay/$1/"* "$CURPATH/builds/$FN/" -r
 }
 
 ###############
@@ -91,12 +104,14 @@ fpm -s dir -t deb \
 --vendor "$PKG_VENDOR" \
 --version "$VERSION" \
 --iteration "$ITERATION_PREFIX$REVISION" \
--C "$PWD/builds/$FN" \
+-C "$CURPATH/builds/$FN" \
 -a amd64 \
 $(echo -e $PKG_DEP) \
 -n $PKG .
 
  cd -
+
+echo -e "$COL_GREEN *** PKG built: $PKG (v $VERSION)!"
 
 done
 
