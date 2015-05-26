@@ -1,1 +1,4 @@
 vars.sh
+*.tar.gz
+*.deb
+revision
