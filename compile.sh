@@ -36,7 +36,7 @@ do
  if [[ "$PKG" == "openvas-libraries" ]];
  then
   # Special case package due to ordering
-  export PKG_CONFIG_PATH="$CURPATH/$FN":$PKG_CONFIG_PATH
+  export PKG_CONFIG_PATH="$CURPATH/builds/$FN/include":$PKG_CONFIG_PATH
  fi
 
  cmake -DCMAKE_INSTALL_PREFIX= .
