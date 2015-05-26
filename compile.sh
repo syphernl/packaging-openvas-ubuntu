@@ -30,7 +30,7 @@ LIBRARY_VERSION=""
 
 function create_overlay {
   # $1 = greenbone-security-assistant
- if [[ -d "$CURPATH/_overlay/$1"]];
+ if [[ -d "$CURPATH/_overlay/$1" ]];
  then
    echo -e "$COL_GREEN*** Overlaying config for packages ($FN) $COL_RESET"
    cp "$CURPATH/_overlay/$1/"* "$CURPATH/release/$FN/" -r
