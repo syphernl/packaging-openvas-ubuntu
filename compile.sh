@@ -113,11 +113,22 @@ esac
 create_overlay "$PKG"
 
 # Deal with dependencies
-PKG_DEP=""
+PKG_ACTIONS=""
 for d in $DEPENDENCIES
 do
-   PKG_DEP+="-d $d\n"
+  PKG_ACTIONS+="-d $d\n"
 done
+
+# Deal with optional pre/post install scripts
+if [[ -f "$CURPATH/_debian/$PKG.beforeinstall" ]];
+then
+  PKG_ACTIONS+="--before-install $CURPATH/_debian/$PKG.beforeinstall\n"
+fi
+
+if [[ -f "$CURPATH/_debian/$PKG.afterinstall" ]];
+then
+  PKG_ACTIONS+="--after-install $CURPATH/_debian/$PKG.afterinstall\n"
+fi
 
 cd "$CURPATH/release/$FN"
 
@@ -132,7 +143,7 @@ fpm -s dir -t deb \
 --iteration "$ITERATION_PREFIX$REVISION" \
 -C "$CURPATH/release/$FN" \
 -a amd64 \
-$(echo -e $PKG_DEP) \
+$(echo -e $PKG_ACTIONS) \
 -n $PKG .
 
 echo -e "$COL_GREEN *** PKG built: $PKG (v $VERSION)!$COL_RESET"
